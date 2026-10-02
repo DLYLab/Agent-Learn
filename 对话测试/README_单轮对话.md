@@ -2,6 +2,8 @@
 
 这个示例向本地部署的 Qwen3-0.6B 发送一条用户消息，并打印一条模型回复。每次运行都是独立的单轮对话，不保存历史消息。
 
+程序会将最新一次的 `response.model_dump()` 结果以格式化 JSON 保存到同目录的 `response.json`。每次运行会覆盖上一次记录。
+
 ## 运行前提
 
 - Conda 环境：`agent`
@@ -35,6 +37,14 @@ conda run -n agent python ".\对话测试\single_turn_chat.py"
 
 ```powershell
 conda run -n agent python ".\对话测试\single_turn_chat.py" --prompt "北京有哪些著名景点？"
+```
+
+指定 JSON 输出文件：
+
+```powershell
+conda run -n agent python ".\对话测试\single_turn_chat.py" `
+  --prompt "你好" `
+  --output ".\对话测试\my_response.json"
 ```
 
 如果你的接口地址或模型名不同：

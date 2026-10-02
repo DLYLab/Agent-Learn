@@ -1,12 +1,14 @@
 """2.2.2 单轮对话：调用本地 OpenAI 兼容的 Llama 服务。"""
 
 import argparse
+import json
 import os
+from pathlib import Path
 
 from openai import APIConnectionError, APIStatusError, OpenAI
 
 
-def chat_once(base_url: str, model: str, prompt: str) -> str:
+def chat_once(base_url: str, model: str, prompt: str, output: Path) -> str:
     """发送一条用户消息，并返回模型的一条回复。"""
     client = OpenAI(
         base_url=base_url,
@@ -19,7 +21,16 @@ def chat_once(base_url: str, model: str, prompt: str) -> str:
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
     )
-    print(response.model_dump())
+
+    response_data = response.model_dump()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    # 先写临时文件再替换，避免写入中断时破坏原有记录。
+    temporary_output = output.with_name(f".{output.name}.tmp")
+    with temporary_output.open("w", encoding="utf-8") as file:
+        json.dump(response_data, file, ensure_ascii=False, indent=2, default=str)
+        file.write("\n")
+    temporary_output.replace(output)
+
     return response.choices[0].message.content or ""
 
 
@@ -40,6 +51,12 @@ def parse_args() -> argparse.Namespace:
         default="你有多大参数",
         help="本轮发送给模型的消息",
     )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(__file__).with_name("response.json"),
+        help="完整响应的 JSON 输出路径（默认保存到脚本所在目录）",
+    )
     return parser.parse_args()
 
 
@@ -48,7 +65,7 @@ def main() -> None:
     print(f"用户：{args.prompt}")
 
     try:
-        answer = chat_once(args.base_url, args.model, args.prompt)
+        answer = chat_once(args.base_url, args.model, args.prompt, args.output)
     except APIConnectionError:
         raise SystemExit(
             f"无法连接本地模型服务：{args.base_url}\n"
